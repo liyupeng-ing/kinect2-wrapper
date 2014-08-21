@@ -8,6 +8,48 @@
 
 BOOST_PYTHON_MODULE(kinect_ext)
 {
+	enum_<HandState>("HandState")
+		.value("HandState_Unknown", HandState_Unknown)
+		.value("HandState_NotTracked", HandState_NotTracked)
+		.value("HandState_Open", HandState_Open)
+		.value("HandState_Closed", HandState_Closed)
+		.value("HandState_Lasso", HandState_Lasso)
+		;
+
+	enum_<TrackingConfidence>("TrackingConfidence")
+		.value("TrackingConfidence_Low", TrackingConfidence_Low)
+		.value("TrackingConfidence_High", TrackingConfidence_High)
+		;
+
+	enum_<JointType>("JointType")
+		.value("JointType_SpineBase", JointType_SpineBase)
+		.value("JointType_SpineMid", JointType_SpineMid)
+		.value("JointType_Neck", JointType_Neck)
+		.value("JointType_Head", JointType_Head)
+		.value("JointType_ShoulderLeft", JointType_ShoulderLeft)
+		.value("JointType_ElbowLeft", JointType_ElbowLeft)
+		.value("JointType_WristLeft", JointType_WristLeft)
+		.value("JointType_HandLeft", JointType_HandLeft)
+		.value("JointType_ShoulderRight", JointType_ShoulderRight)
+		.value("JointType_ElbowRight", JointType_ElbowRight)
+		.value("JointType_WristRight", JointType_WristRight)
+		.value("JointType_HandRight", JointType_HandRight)
+		.value("JointType_HipLeft", JointType_HipLeft)
+		.value("JointType_KneeLeft", JointType_KneeLeft)
+		.value("JointType_AnkleLeft", JointType_AnkleLeft)
+		.value("JointType_FootLeft", JointType_FootLeft)
+		.value("JointType_HipRight", JointType_HipRight)
+		.value("JointType_KneeRight", JointType_KneeRight)
+		.value("JointType_AnkleRight", JointType_AnkleRight)
+		.value("JointType_FootRight", JointType_FootRight)
+		.value("JointType_SpineShoulder", JointType_SpineShoulder)
+		.value("JointType_HandTipLeft", JointType_HandTipLeft)
+		.value("JointType_ThumbLeft", JointType_ThumbLeft)
+		.value("JointType_HandTipRight", JointType_HandTipRight)
+		.value("JointType_ThumbRight", JointType_ThumbRight)
+		.value("JointType_Count", JointType_Count)
+		;
+
 	class_<Kinect_Ext>("Kinect")
 		.def("init", &Kinect_Ext::Init)
 		.def("destroy", &Kinect_Ext::Destroy)
@@ -20,7 +62,12 @@ BOOST_PYTHON_MODULE(kinect_ext)
 		;
 
 	class_<Body>("Body")
-		.def_readonly("tracked", &Body::_tracked)
+		.def_readonly("tracked", &Body::nTracked)
+		.def_readonly("hand_left_state", &Body::nHandLeftState)
+		.def_readonly("hand_left_confidence", &Body::nHandLeftConfidence)
+		.def_readonly("hand_right_state", &Body::nHandRightState)
+		.def_readonly("hand_right_confidence", &Body::nHandRightConfidence)
+		.add_property("lean", &Body::get_lean)
 		.add_property("joints", &Body::get_joints)
 		.add_property("joint_orientations", &Body::get_joint_orientations)
 		;

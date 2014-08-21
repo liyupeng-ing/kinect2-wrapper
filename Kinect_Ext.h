@@ -3,24 +3,40 @@
 
 struct Body
 {
-	BOOLEAN _tracked;
-	dict _joints;
-	dict _joint_orientations;
+	BOOLEAN nTracked;
+	TrackingState nLeanTracked;
+
+	PointF nLean;
+	dict nJoints;
+	dict nJointOrientations;
+	HandState nHandLeftState;
+	HandState nHandRightState;
+	TrackingConfidence nHandLeftConfidence;
+	TrackingConfidence nHandRightConfidence;
+
 
 	Body() {}
 	Body(IBody *pBody) {
 		HRESULT hr;
 		if (pBody) {
-			_tracked = false;
-			hr = pBody->get_IsTracked(&_tracked);
+			hr = pBody->get_IsTracked(&nTracked);
+			if (SUCCEEDED(hr) && nTracked) {
 
-			if (SUCCEEDED(hr) && _tracked) {
+				hr = pBody->get_LeanTrackingState(&nLeanTracked);
+				if (SUCCEEDED(hr) && nLeanTracked) {
+					hr = pBody->get_Lean(&nLean);
+				}
+
+				hr = pBody->get_HandLeftState(&nHandLeftState);
+				hr = pBody->get_HandRightState(&nHandRightState);
+				hr = pBody->get_HandLeftConfidence(&nHandLeftConfidence);
+				hr = pBody->get_HandRightConfidence(&nHandRightConfidence);
 				
 				Joint joints[JointType_Count];
 				hr = pBody->GetJoints(_countof(joints), joints);
 				if (SUCCEEDED(hr)) {
 					for (int j = 0; j < _countof(joints); ++j) {
-						_joints[int(joints[j].JointType)] = make_tuple(joints[j].Position.X, joints[j].Position.Y, joints[j].Position.Z);
+						nJoints[joints[j].JointType] = make_tuple(joints[j].Position.X, joints[j].Position.Y, joints[j].Position.Z);
 					}
 				}
 
@@ -28,27 +44,31 @@ struct Body
 				hr = pBody->GetJointOrientations(_countof(joint_orientations), joint_orientations);
 				if (SUCCEEDED(hr)) {
 					for (int j = 0; j < _countof(joint_orientations); ++j) {
-						_joint_orientations[int(joint_orientations[j].JointType)] = make_tuple(joint_orientations[j].Orientation.w, joint_orientations[j].Orientation.x, joint_orientations[j].Orientation.y, joint_orientations[j].Orientation.z);
+						nJointOrientations[joint_orientations[j].JointType] = make_tuple(joint_orientations[j].Orientation.w, joint_orientations[j].Orientation.x, joint_orientations[j].Orientation.y, joint_orientations[j].Orientation.z);
 					}
 				}
 			}
 		}
 	}
 
+	tuple get_lean() {
+		return make_tuple(nLean.X, nLean.Y);
+	}
+
 	dict get_joints() {
-		return _joints;
+		return nJoints;
 	}
 
 	dict get_joint_orientations() {
-		return _joint_orientations;
+		return nJointOrientations;
 	}
 
 	bool operator==(const Body& rhs) const {
-		return (_joints == rhs._joints);
+		return (nJoints == rhs.nJoints);
 	}
 
 	bool operator!=(const Body& rhs) const {
-		return !(_joints == rhs._joints);
+		return !(nJoints == rhs.nJoints);
 	}
 };
 
