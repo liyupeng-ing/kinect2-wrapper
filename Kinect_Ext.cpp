@@ -12,7 +12,7 @@ BOOST_PYTHON_MODULE(kinect_ext)
 		.def("init", &Kinect_Ext::Init)
 		.def("destroy", &Kinect_Ext::Destroy)
 		.def("update", &Kinect_Ext::Update)
-		.def("bodies", &Kinect_Ext::Bodies)
+		.add_property("bodies", &Kinect_Ext::GetBodies)
 		;
 	
 	class_<std::vector<Body> >("BodyVec")
@@ -21,7 +21,8 @@ BOOST_PYTHON_MODULE(kinect_ext)
 
 	class_<Body>("Body")
 		.def_readonly("tracked", &Body::_tracked)
-		.def("joints", &Body::get_joints)
+		.add_property("joints", &Body::get_joints)
+		.add_property("joint_orientations", &Body::get_joint_orientations)
 		;
 }
 
@@ -76,7 +77,7 @@ HRESULT Kinect_Ext::InitializeDefaultSensor()
 	}
 
 	if (m_pKinectSensor) {
-		// Initialize the Kinect and get coordinate mapper and the body reader
+		// Initialize the Kinect and get coordinate mapper and the body reader and the face reader
 		IBodyFrameSource* pBodyFrameSource = NULL;
 
 		hr = m_pKinectSensor->Open();
@@ -94,6 +95,7 @@ HRESULT Kinect_Ext::InitializeDefaultSensor()
 		}
 
 		SafeRelease(pBodyFrameSource);
+
 	}
 
 	if (!m_pKinectSensor || FAILED(hr)) {
@@ -138,35 +140,28 @@ void Kinect_Ext::Destroy()
 /// </summary>
 void Kinect_Ext::Update()
 {
+	HRESULT hr;
 	if (!m_pBodyFrameReader) {
 		return;
 	}
-
+	
 	IBodyFrame* pBodyFrame = NULL;
 
-	HRESULT hr = m_pBodyFrameReader->AcquireLatestFrame(&pBodyFrame);
+	IBody* ppBodies[BODY_COUNT] = { 0 };
+	hr = m_pBodyFrameReader->AcquireLatestFrame(&pBodyFrame);
+	if (SUCCEEDED(hr)) {
+		hr = pBodyFrame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
+	}
 
 	if (SUCCEEDED(hr)) {
-		INT64 nTime = 0;
-
-		hr = pBodyFrame->get_RelativeTime(&nTime);
-
-		IBody* ppBodies[BODY_COUNT] = { 0 };
-
-		if (SUCCEEDED(hr)) {
-			hr = pBodyFrame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
-		}
-
-		if (SUCCEEDED(hr)) {
-			m_pBodies.clear();
-			for (int i = 0; i < BODY_COUNT; ++i) {
-				IBody* pBody = ppBodies[i];
-				if (pBody) {
-					BOOLEAN _tracked = false;
-					hr = pBody->get_IsTracked(&_tracked);
-					if (SUCCEEDED(hr) && _tracked) {
-						m_pBodies.push_back(Body(pBody));
-					}
+		m_pBodies.clear();
+		for (int i = 0; i < BODY_COUNT; ++i) {
+			IBody* pBody = ppBodies[i];
+			if (pBody) {
+				BOOLEAN ntracked = false;
+				hr = pBody->get_IsTracked(&ntracked);
+				if (SUCCEEDED(hr) && ntracked) {
+					m_pBodies.push_back(Body(pBody));
 				}
 			}
 		}
@@ -179,7 +174,8 @@ void Kinect_Ext::Update()
 	SafeRelease(pBodyFrame);
 }
 
-std::vector<Body> Kinect_Ext::Bodies()
+
+std::vector<Body> Kinect_Ext::GetBodies()
 {
 	return m_pBodies;
 }

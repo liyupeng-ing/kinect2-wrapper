@@ -3,8 +3,10 @@
 
 struct Body
 {
-	dict _joints;
 	BOOLEAN _tracked;
+	dict _joints;
+	dict _joint_orientations;
+
 	Body() {}
 	Body(IBody *pBody) {
 		HRESULT hr;
@@ -13,11 +15,20 @@ struct Body
 			hr = pBody->get_IsTracked(&_tracked);
 
 			if (SUCCEEDED(hr) && _tracked) {
+				
 				Joint joints[JointType_Count];
 				hr = pBody->GetJoints(_countof(joints), joints);
 				if (SUCCEEDED(hr)) {
 					for (int j = 0; j < _countof(joints); ++j) {
 						_joints[int(joints[j].JointType)] = make_tuple(joints[j].Position.X, joints[j].Position.Y, joints[j].Position.Z);
+					}
+				}
+
+				JointOrientation joint_orientations[JointType_Count];
+				hr = pBody->GetJointOrientations(_countof(joint_orientations), joint_orientations);
+				if (SUCCEEDED(hr)) {
+					for (int j = 0; j < _countof(joint_orientations); ++j) {
+						_joint_orientations[int(joint_orientations[j].JointType)] = make_tuple(joint_orientations[j].Orientation.w, joint_orientations[j].Orientation.x, joint_orientations[j].Orientation.y, joint_orientations[j].Orientation.z);
 					}
 				}
 			}
@@ -26,6 +37,10 @@ struct Body
 
 	dict get_joints() {
 		return _joints;
+	}
+
+	dict get_joint_orientations() {
+		return _joint_orientations;
 	}
 
 	bool operator==(const Body& rhs) const {
@@ -58,8 +73,7 @@ public:
 	void Destroy();
 	void Update();
 
-	std::vector<Body> Bodies();
-
+	std::vector<Body> GetBodies();
 private:
 	HWND                    m_hWnd;
 	INT64                   m_nStartTime;
@@ -74,10 +88,9 @@ private:
 
 	// Body reader
 	IBodyFrameReader*       m_pBodyFrameReader;
-	
-	// Vector of bodies
-	std::vector<Body>		m_pBodies;
 
+	// List of bodies
+	std::vector<Body>		m_pBodies;
 
 	/// <summary>
 	/// Initializes the default Kinect sensor

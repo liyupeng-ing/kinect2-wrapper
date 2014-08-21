@@ -16,6 +16,9 @@
 #include <vector>
 
 #include "Kinect.h"
+#include "Kinect.Face.h"
+//#include "Kinect.INPC.h"
+//#include "Kinect.VisualGestureBuilder.h"
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
