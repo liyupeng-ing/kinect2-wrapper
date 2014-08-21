@@ -5,20 +5,26 @@
 #include "Kinect_Ext.h"
 
 
-
 BOOST_PYTHON_MODULE(kinect_ext)
 {
+	// KINECT ENUMS
+	enum_<TrackingConfidence>("TrackingConfidence")
+		.value("TrackingConfidence_Low", TrackingConfidence_Low)
+		.value("TrackingConfidence_High", TrackingConfidence_High)
+		;
+
+	enum_<TrackingState>("TrackingState")
+		.value("TrackingState_NotTracked", TrackingState_NotTracked)
+		.value("TrackingState_Inferred", TrackingState_Inferred)
+		.value("TrackingState_Tracked", TrackingState_Tracked)
+		;
+
 	enum_<HandState>("HandState")
 		.value("HandState_Unknown", HandState_Unknown)
 		.value("HandState_NotTracked", HandState_NotTracked)
 		.value("HandState_Open", HandState_Open)
 		.value("HandState_Closed", HandState_Closed)
 		.value("HandState_Lasso", HandState_Lasso)
-		;
-
-	enum_<TrackingConfidence>("TrackingConfidence")
-		.value("TrackingConfidence_Low", TrackingConfidence_Low)
-		.value("TrackingConfidence_High", TrackingConfidence_High)
 		;
 
 	enum_<JointType>("JointType")
@@ -50,50 +56,86 @@ BOOST_PYTHON_MODULE(kinect_ext)
 		.value("JointType_Count", JointType_Count)
 		;
 
-	class_<Kinect_Ext>("Kinect")
-		.def("init", &Kinect_Ext::Init)
-		.def("destroy", &Kinect_Ext::Destroy)
-		.def("update", &Kinect_Ext::Update)
-		.add_property("bodies", &Kinect_Ext::GetBodies)
+	// KINECT STRUCTS
+	class_<CameraSpacePoint>("CameraSpacePoint")
+		.def_readwrite("X", &CameraSpacePoint::X)
+		.def_readwrite("Y", &CameraSpacePoint::Y)
+		.def_readwrite("Z", &CameraSpacePoint::Z)
+		;
+
+	class_<ColorSpacePoint>("ColorSpacePoint")
+		.def_readwrite("X", &ColorSpacePoint::X)
+		.def_readwrite("Y", &ColorSpacePoint::Y)
+		;
+
+	class_<DepthSpacePoint>("DepthSpacePoint")
+		.def_readwrite("X", &DepthSpacePoint::X)
+		.def_readwrite("Y", &DepthSpacePoint::Y)
+		;
+
+	class_<Joint>("Joint")
+		.def_readwrite("JointType", &Joint::JointType)
+		.def_readwrite("Position", &Joint::Position)
+		.def_readwrite("TrackingState", &Joint::TrackingState)
+		;
+
+	class_<JointOrientation>("JointOrientation")
+		.def_readwrite("JointType", &JointOrientation::JointType)
+		.def_readwrite("Orientation", &JointOrientation::Orientation)
+		;
+
+	class_<PointF>("PointF")
+		.def_readwrite("X", &PointF::X)
+		.def_readwrite("Y", &PointF::Y)
+		;
+
+	class_<RectF>("RectF")
+		.def_readwrite("X", &RectF::X)
+		.def_readwrite("Y", &RectF::Y)
+		.def_readwrite("Width", &RectF::Width)
+		.def_readwrite("Height", &RectF::Height)
+		;
+
+	class_<Vector4>("Vector4")
+		.def_readwrite("x", &Vector4::x)
+		.def_readwrite("y", &Vector4::y)
+		.def_readwrite("z", &Vector4::z)
+		.def_readwrite("w", &Vector4::w)
 		;
 	
-	class_<std::vector<Body> >("BodyVec")
-		.def(vector_indexing_suite<std::vector<Body> >())
+	// WRAPPER
+	class_<Kinect_Ext>("Kinect")
+		.def("Init", &Kinect_Ext::Init)
+		.def("Destroy", &Kinect_Ext::Destroy)
+		.def("Update", &Kinect_Ext::Update)
+		.add_property("Bodies", &Kinect_Ext::get_Bodies)
 		;
 
 	class_<Body>("Body")
-		.def_readonly("tracked", &Body::nTracked)
-		.def_readonly("hand_left_state", &Body::nHandLeftState)
-		.def_readonly("hand_left_confidence", &Body::nHandLeftConfidence)
-		.def_readonly("hand_right_state", &Body::nHandRightState)
-		.def_readonly("hand_right_confidence", &Body::nHandRightConfidence)
-		.add_property("lean", &Body::get_lean)
-		.add_property("joints", &Body::get_joints)
-		.add_property("joint_orientations", &Body::get_joint_orientations)
+		.def_readwrite("ClippedEdges", &Body::_get_ClippedEdges)
+		.def_readwrite("HandLeftConfidence", &Body::_get_HandLeftConfidence)
+		.def_readwrite("HandLeftState", &Body::_get_HandLeftState)
+		.def_readwrite("HandRightConfidence", &Body::_get_HandRightConfidence)
+		.def_readwrite("HandRightState", &Body::_get_HandRightState)
+		.def_readwrite("IsRestricted", &Body::_get_IsRestricted)
+		.def_readwrite("IsTracked", &Body::_get_IsTracked)
+		.def_readwrite("Lean", &Body::_get_Lean)
+		.def_readwrite("LeanTrackingState", &Body::_get_LeanTrackingState)
+		.def_readwrite("TrackingId", &Body::_get_TrackingId)
+		.add_property("Joints", &Body::get_Joints)
+		.add_property("JointOrientations", &Body::get_JointOrientations)
 		;
 }
 
+
 Kinect_Ext::Kinect_Ext() :
-	m_hWnd(NULL),
-	m_nStartTime(0),
-	m_nLastCounter(0),
-	m_nFramesSinceUpdate(0),
-	m_fFreq(0),
-	m_nNextStatusTime(0),
 	m_pKinectSensor(NULL),
 	m_pCoordinateMapper(NULL),
 	m_pBodyFrameReader(NULL)
 {
-	LARGE_INTEGER qpf = { 0 };
-	if (QueryPerformanceFrequency(&qpf)) {
-		m_fFreq = double(qpf.QuadPart);
-	}
 }
 
 
-/// <summary>
-/// Destructor
-/// </summary>
 Kinect_Ext::~Kinect_Ext()
 {
 	// done with body frame reader
@@ -110,10 +152,7 @@ Kinect_Ext::~Kinect_Ext()
 	SafeRelease(m_pKinectSensor);
 }
 
-/// <summary>
-/// Initializes the default Kinect sensor
-/// </summary>
-/// <returns>indicates success or failure</returns>
+
 HRESULT Kinect_Ext::InitializeDefaultSensor()
 {
 	HRESULT hr;
@@ -153,19 +192,13 @@ HRESULT Kinect_Ext::InitializeDefaultSensor()
 	return hr;
 }
 
-/// <summary>
-/// Wrapper around initiation function.
-/// </summary>
-/// <returns>void</returns>
+
 void Kinect_Ext::Init()
 {
 	InitializeDefaultSensor();
 }
 
-/// <summary>
-/// Wrapper around deconstructor.
-/// </summary>
-/// <returns>void</returns>
+
 void Kinect_Ext::Destroy()
 {
 	// done with body frame reader
@@ -182,9 +215,7 @@ void Kinect_Ext::Destroy()
 	SafeRelease(m_pKinectSensor);
 }
 
-/// <summary>
-/// Main processing function
-/// </summary>
+
 void Kinect_Ext::Update()
 {
 	HRESULT hr;
@@ -201,14 +232,14 @@ void Kinect_Ext::Update()
 	}
 
 	if (SUCCEEDED(hr)) {
-		m_pBodies.clear();
+		m_pBodies = list();
 		for (int i = 0; i < BODY_COUNT; ++i) {
 			IBody* pBody = ppBodies[i];
 			if (pBody) {
-				BOOLEAN ntracked = false;
-				hr = pBody->get_IsTracked(&ntracked);
-				if (SUCCEEDED(hr) && ntracked) {
-					m_pBodies.push_back(Body(pBody));
+				BOOLEAN _get_IsTracked = false;
+				hr = pBody->get_IsTracked(&_get_IsTracked);
+				if (SUCCEEDED(hr) && _get_IsTracked) {
+					m_pBodies.append(Body(pBody));
 				}
 			}
 		}
@@ -222,7 +253,7 @@ void Kinect_Ext::Update()
 }
 
 
-std::vector<Body> Kinect_Ext::GetBodies()
+list Kinect_Ext::get_Bodies()
 {
 	return m_pBodies;
 }

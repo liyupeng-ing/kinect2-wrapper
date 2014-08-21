@@ -1,12 +1,13 @@
 import kinect_ext
 
 k = kinect_ext.Kinect()
-k.init()
+k.Init()
 
 while 1:
-	k.update()
-	if k.bodies:
-		print k.bodies[0].joints
+	k.Update()
+
+	if k.Bodies:
+		print k.Bodies[0].HandRightState
 
 
 
